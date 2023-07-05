@@ -1,0 +1,21 @@
+body{
+    display: flex;
+    flex-direction: column;
+    align-items: baseline;
+    background-color: rgb(247, 247, 249);
+}
+
+canvas {
+    width: 75vw;
+    aspect-ratio: 3 / 2;
+    border: 1px solid black ;
+    margin-inline: auto;
+}
+
+.controls{
+    width: 70vw;
+    margin: 1.75rem auto;
+    display: flex;
+    justify-content: center;
+    flex-wrap: nowrap;
+}

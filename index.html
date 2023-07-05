@@ -1,0 +1,139 @@
+<html>
+    <head>
+        <title>Maze generator</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+        <link rel="stylesheet" href="style.css">
+        <script src="https://code.jquery.com/jquery-3.7.0.min.js" integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g=" crossorigin="anonymous"></script>
+        <script src="https://pixijs.download/release/pixi.js"></script>
+        <script type="module"> import * as App from './app.js'; window.App = App;</script>
+    </head>
+    <body>
+        <script>
+            // create global instance
+            let app = undefined
+            // trigger first run automatically and add events
+            window.onload = () => { 
+                $(".btn").last().click();
+                $(".btn-group .btn").click(toggleInput)
+            }
+
+            makeMaze = () => {
+                
+                // Make new maze object
+                let maze = new window.App.Maze(
+                    $("#width-inp").val(),
+                    $("#height-inp").val(),
+                    ...($("#type").val() === "col" ? ["ff0000", "0000ff"] : [])
+                );
+                let {ratio, fullHeight, fullWidth} = maze.getConfig();
+                let {height, width, size} = maze.getParams();
+
+                console.log(maze)
+
+                // remove old canvas and make new one
+                if(app != void 0) app.destroy(true, {children: true})
+                app = new PIXI.Application({ background: "#fff", width: fullWidth, height: fullHeight});
+                document.body.appendChild(app.view);
+                app.view.style.aspectRatio = ratio;
+
+                // initialise
+                renderGrid(app, maze.getParams())
+                let square = new PIXI.Graphics().beginFill(0x0000ff).drawRect(0, 0, size, size);
+                app.stage.addChild(square);
+                if(maze.getHeatmap() !== null)
+                        newAddDepth(app, [0, 0], [0, 0], maze.getColour(), size);
+
+                // runtime
+                app.ticker.add((delta) => {
+                    let [x, y] = maze.getTree().getCurrent().getCoords();
+                    let next = maze.getNext();
+                    // if no places to move to
+                    if(!next){
+                        let more = maze.getTree().back();
+                        // all done, tidy up and free loop
+                        if(!more){
+                            square.x = -1000;
+                            app.ticker.stop();
+                            return;
+                        }
+                        // move the square
+                        [x, y] = maze.getTree().getCurrent().getCoords();
+                        square.x = x * size, square.y = y * size;
+                        return;
+                    }
+                    // continue
+                    let [cx, cy] = next;
+                    let colour = maze.getColour();
+                    newHidePath(app, [x, y], next, colour, size);
+                    if(maze.getHeatmap() !== null)
+                        newAddDepth(app, [x, y], next, colour, size);
+                    square.x = (x + cx) * size, square.y = (y + cy) * size;
+                });
+
+            }
+
+            newHidePath = (app, [x, y], [cx, cy], colour, size) => {
+                let clear = new PIXI.Graphics().lineStyle(1, new PIXI.Color(colour));
+                // calculate line start positions
+                let horiz = cx !== 0;   // has it moved left or right <-| |->
+                let sx = (x + Math.max(cx, 0)) * size;
+                let sy = (y + Math.max(cy, 0)) * size;
+                // calculate line end positions
+                let ex = horiz ? sx : (sx + size);
+                let ey = horiz ? (sy + size) : sy;
+                // do line stuff
+                clear.moveTo(sx, sy).lineTo(ex, ey);
+                app.stage.addChild(clear);
+            }
+
+            newAddDepth = (app, [x, y], [cx, cy], colour, size) => {
+                let s = new PIXI.Graphics().beginFill(colour)
+                    .drawRect((x + cx) * size , (y + cy) * size + 1, size - 1, size - 1);
+                app.stage.addChild(s);
+            }
+
+            renderGrid = (app, params) => {
+                let {width, height, size} = params;
+                for(let i = 1; i <= width; i++){
+                    let l = new PIXI.Graphics().lineStyle(1, new PIXI.Color('black').toArray());
+                    l.moveTo(i * size, 0).lineTo(i * size, height * size)
+                    app.stage.addChild(l);
+                }
+                for(let i = 0; i < height; i++){
+                    let l = new PIXI.Graphics().lineStyle(1, new PIXI.Color('black').toArray());
+                    l.moveTo(0, i * size).lineTo(width * size, i * size)
+                    app.stage.addChild(l);
+                }
+            }
+
+            // HTML event functions
+
+            toggleInput = (e) => {
+                let t = $(e.target), g = t.parent();
+                g.find(".btn").removeClass("btn-primary")
+                    .addClass("btn-outline-primary");
+                t.toggleClass("btn-primary btn-outline-primary");
+                g.find("input").val(t.data("value"));
+            }
+
+            validate = (e) => {
+                let min = +e.min, value = +e.value;
+                if(value === void 0 || value < min){
+                    e.value = min;
+                    e.innerHTML = min;
+                }
+            }
+
+        </script>
+        <div class="controls">
+            <div class="btn-group mr-2">
+                <button class="btn btn-primary" data-value="none">None</button>
+                <input type="hidden" value="none" id="type">
+                <button class="btn btn-outline-primary" data-value="col">Colours</button>
+            </div>
+            <input name="width" id="width-inp" type="number" class="form-control" value="36" min="15" required oninput="validate(this)">
+            <input name="height" id="height-inp" type="number" class="form-control mr-2" value="24" min="10" required oninput="validate(this)">
+            <button class="btn btn-outline-success" onclick="makeMaze()">New</button>
+        </div>
+    </body>
+</html>
