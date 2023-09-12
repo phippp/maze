@@ -38,12 +38,12 @@ export class Maze {
     }
     getColour() {
         if (this.heatmap === null)
-            return "#ffffff";
+            return "#454545";
         let f = Math.min(1, this.tree.getDepth() * 1.7 / (this.params.width * this.params.height));
         let c0 = this.heatmap.start.match(/.{1,2}/g);
         let c1 = this.heatmap.end.match(/.{1,2}/g);
         if (c0 === null || c1 === null)
-            return "#ffffff";
+            return "#454545";
         let cl0 = c0.map((oct) => parseInt(oct, 16) * (1 - f));
         let cl1 = c1.map((oct) => parseInt(oct, 16) * f);
         let ci = [0, 1, 2].map(i => Math.min(Math.round(cl0[i] + cl1[i]), 255));

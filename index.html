@@ -1,141 +1,173 @@
 <html>
     <head>
-        <title>Maze generator</title>
+        <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png">
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png">
+        <link rel="manifest" href="/favicon/site.webmanifest">
+        <link rel="mask-icon" href="/favicon/safari-pinned-tab.svg" color="#5bbad5">
+        <meta name="msapplication-TileColor" content="#da532c">
+        <meta name="theme-color" content="#dcdcdc">
+        <meta charset="UTF-8">
+        <!-- <meta name="color-scheme" content="dark"> -->
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://phippp.github.io/css/style.css">
         <link rel="stylesheet" href="style.css">
         <script src="https://code.jquery.com/jquery-3.7.0.min.js" integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g=" crossorigin="anonymous"></script>
         <script src="https://pixijs.download/release/pixi.js"></script>
         <script type="module"> import * as App from './app.js'; window.App = App;</script>
+        <title>Phillip Navarrete | Maze</title>
     </head>
     <body>
-        <script>
-            // create global instance
-            let app = undefined
-            // trigger first run automatically and add events
-            window.onload = () => { 
-                $(".btn").last().click();
-                $(".btn-group .btn").click(toggleInput)
-            }
+        <header>
+            <nav id="navbar">
+                <div class="collapsable">
+                    <img class="small-logo" src="https://phippp.github.io/images/logo/logo-short-white.png">
+                    <img class="wide-logo" src="https://phippp.github.io/images/logo/logo-wide-white.png">
+                </div>
+                <div class="nav-list">
+                    <a href="/">Home</a>
+                    <a href="/portfolio">Portfolio</a>
+                    <a href="/projects" class="active">Projects</a>
+                    <!-- <a href="#"></a> -->
+                </div>
+                <div class="nav-contact">
+                    <a href="https://www.github.com/phippp" target="_blank" class="collapsable"><ion-icon name="logo-github"></ion-icon><span>GitHub</span></a>
+                    <a href="https://www.linkedin.com/in/phillip-navarrete" target="_blank" class="collapsable"><ion-icon name="logo-linkedin"></ion-icon><span>LinkedIn</span></a>
+                </div>
+            </nav>
+        </header>
+        <section id="project">
+            <script>
+                // create global instance
+                let app = undefined
+                // trigger first run automatically and add events
+                window.onload = () => { 
+                    $(".btn").last().click();
+                    $(".btn-group .btn").click(toggleInput)
+                }
 
-            makeMaze = () => {
-                
-                // Make new maze object
-                let maze = new window.App.Maze(
-                    $("#width-inp").val(),
-                    $("#height-inp").val(),
-                    ...($("#type").val() === "col" ? ["ff0000", "0000ff"] : [])
-                );
-                let {ratio, fullHeight, fullWidth} = maze.getConfig();
-                let {height, width, size} = maze.getParams();
+                makeMaze = () => {
+                    
+                    // Make new maze object
+                    let maze = new window.App.Maze(
+                        $("#width-inp").val(),
+                        $("#height-inp").val(),
+                        ...($("#type").val() === "col" ? ["ff0000", "0000ff"] : [])
+                    );
+                    let {ratio, fullHeight, fullWidth} = maze.getConfig();
+                    let {height, width, size} = maze.getParams();
 
-                console.log(maze)
+                    // remove old canvas and make new one
+                    if(app != void 0) app.destroy(true, {children: true})
+                    app = new PIXI.Application({ background: "#454545", width: fullWidth, height: fullHeight});
+                    $('section')[0].appendChild(app.view);
+                    app.view.style.aspectRatio = ratio;
 
-                // remove old canvas and make new one
-                if(app != void 0) app.destroy(true, {children: true})
-                app = new PIXI.Application({ background: "#fff", width: fullWidth, height: fullHeight});
-                document.body.appendChild(app.view);
-                app.view.style.aspectRatio = ratio;
+                    // initialise
+                    renderGrid(app, maze.getParams())
+                    let square = new PIXI.Graphics().beginFill(0x0000ff).drawRect(0, 0, size, size);
+                    app.stage.addChild(square);
+                    if(maze.getHeatmap() !== null)
+                        addDepth(app, [0, 0], [0, 0], maze.getColour(), size);
 
-                // initialise
-                renderGrid(app, maze.getParams())
-                let square = new PIXI.Graphics().beginFill(0x0000ff).drawRect(0, 0, size, size);
-                app.stage.addChild(square);
-                if(maze.getHeatmap() !== null)
-                    addDepth(app, [0, 0], [0, 0], maze.getColour(), size);
-
-                // runtime
-                app.ticker.add((delta) => {
-                    let [x, y] = maze.getTree().getCurrent().getCoords();
-                    let next = maze.getNext();
-                    // if no places to move to
-                    if(!next){
-                        let more = maze.getTree().back();
-                        // all done, tidy up and free loop
-                        if(!more){
-                            square.x = -1000;
-                            app.ticker.stop();
+                    // runtime
+                    app.ticker.add((delta) => {
+                        let [x, y] = maze.getTree().getCurrent().getCoords();
+                        let next = maze.getNext();
+                        // if no places to move to
+                        if(!next){
+                            let more = maze.getTree().back();
+                            // all done, tidy up and free loop
+                            if(!more){
+                                square.x = -1000;
+                                app.ticker.stop();
+                                return;
+                            }
+                            // move the square
+                            [x, y] = maze.getTree().getCurrent().getCoords();
+                            square.x = x * size, square.y = y * size;
                             return;
                         }
-                        // move the square
-                        [x, y] = maze.getTree().getCurrent().getCoords();
-                        square.x = x * size, square.y = y * size;
-                        return;
+                        // continue
+                        let [cx, cy] = next;
+                        let colour = maze.getColour();
+                        hidePath(app, [x, y], next, colour, size);
+                        if(maze.getHeatmap() !== null)
+                            addDepth(app, [x, y], next, colour, size);
+                        square.x = (x + cx) * size, square.y = (y + cy) * size;
+                    });
+
+                }
+
+                hidePath = (app, [x, y], [cx, cy], colour, size) => {
+                    let clear = new PIXI.Graphics().lineStyle(1, new PIXI.Color(colour));
+                    // calculate line start positions
+                    let horiz = cx !== 0;   // has it moved left or right <-| |->
+                    let sx = (x + Math.max(cx, 0)) * size + (horiz ? 0 : 0.5);
+                    let sy = (y + Math.max(cy, 0)) * size + (horiz ? 0.5 : 0);
+                    // calculate line end positions
+                    let ex = horiz ? sx : (sx + size - 1);
+                    let ey = horiz ? (sy + size - 1) : sy;
+                    // do line stuff
+                    clear.moveTo(sx, sy).lineTo(ex, ey);
+                    app.stage.addChild(clear);
+                }
+
+                addDepth = (app, [x, y], [cx, cy], colour, size) => {
+                    let s = new PIXI.Graphics().beginFill(colour)
+                        .drawRect((x + cx) * size , (y + cy) * size + 1, size - 1, size - 1);
+                    app.stage.addChild(s);
+                }
+
+                renderGrid = (app, params) => {
+                    let {width, height, size} = params;
+                    for(let i = 1; i <= width; i++){
+                        let l = new PIXI.Graphics().lineStyle(1, new PIXI.Color('black').toArray());
+                        l.moveTo(i * size, 0).lineTo(i * size, height * size)
+                        app.stage.addChild(l);
                     }
-                    // continue
-                    let [cx, cy] = next;
-                    let colour = maze.getColour();
-                    hidePath(app, [x, y], next, colour, size);
-                    if(maze.getHeatmap() !== null)
-                        addDepth(app, [x, y], next, colour, size);
-                    square.x = (x + cx) * size, square.y = (y + cy) * size;
-                });
-
-            }
-
-            hidePath = (app, [x, y], [cx, cy], colour, size) => {
-                let clear = new PIXI.Graphics().lineStyle(1, new PIXI.Color(colour));
-                // calculate line start positions
-                let horiz = cx !== 0;   // has it moved left or right <-| |->
-                let sx = (x + Math.max(cx, 0)) * size + (horiz ? 0 : 0.5);
-                let sy = (y + Math.max(cy, 0)) * size + (horiz ? 0.5 : 0);
-                // calculate line end positions
-                let ex = horiz ? sx : (sx + size - 1);
-                let ey = horiz ? (sy + size - 1) : sy;
-                // do line stuff
-                clear.moveTo(sx, sy).lineTo(ex, ey);
-                app.stage.addChild(clear);
-            }
-
-            addDepth = (app, [x, y], [cx, cy], colour, size) => {
-                let s = new PIXI.Graphics().beginFill(colour)
-                    .drawRect((x + cx) * size , (y + cy) * size + 1, size - 1, size - 1);
-                app.stage.addChild(s);
-            }
-
-            renderGrid = (app, params) => {
-                let {width, height, size} = params;
-                for(let i = 1; i <= width; i++){
-                    let l = new PIXI.Graphics().lineStyle(1, new PIXI.Color('black').toArray());
-                    l.moveTo(i * size, 0).lineTo(i * size, height * size)
-                    app.stage.addChild(l);
+                    for(let i = 0; i < height; i++){
+                        let l = new PIXI.Graphics().lineStyle(1, new PIXI.Color('black').toArray());
+                        l.moveTo(0, i * size).lineTo(width * size, i * size)
+                        app.stage.addChild(l);
+                    }
                 }
-                for(let i = 0; i < height; i++){
-                    let l = new PIXI.Graphics().lineStyle(1, new PIXI.Color('black').toArray());
-                    l.moveTo(0, i * size).lineTo(width * size, i * size)
-                    app.stage.addChild(l);
+
+                // HTML event functions
+
+                toggleInput = (e) => {
+                    let t = $(e.target), g = t.parent();
+                    g.find(".btn").removeClass("btn-primary")
+                        .addClass("btn-outline-primary");
+                    t.toggleClass("btn-primary btn-outline-primary");
+                    g.find("input").val(t.data("value"));
                 }
-            }
 
-            // HTML event functions
-
-            toggleInput = (e) => {
-                let t = $(e.target), g = t.parent();
-                g.find(".btn").removeClass("btn-primary")
-                    .addClass("btn-outline-primary");
-                t.toggleClass("btn-primary btn-outline-primary");
-                g.find("input").val(t.data("value"));
-            }
-
-            validate = (e) => {
-                let min = +e.min, value = +e.value;
-                if(value === void 0 || value < min){
-                    e.value = min;
-                    e.innerHTML = min;
+                validate = (e) => {
+                    let min = +e.min, value = +e.value;
+                    if(value === void 0 || value < min){
+                        e.value = min;
+                        e.innerHTML = min;
+                    }
                 }
-            }
 
-        </script>
-        <div class="controls row">
-            <div class="btn-group mr-2 mb-2 col-sm-12 col-md-4 d-flex flex-row justify-content-center">
-                <button class="btn btn-primary" data-value="none">None</button>
-                <input type="hidden" value="none" id="type">
-                <button class="btn btn-outline-primary" data-value="col">Colours</button>
+            </script>
+            <div class="controls row">
+                <div class="btn-group mr-2 mb-2 col-sm-12 col-md-4 d-flex flex-row justify-content-center">
+                    <button class="btn btn-primary" data-value="none">None</button>
+                    <input type="hidden" value="none" id="type">
+                    <button class="btn btn-outline-primary" data-value="col">Colours</button>
+                </div>
+                <div class="mb-2 d-flex flex-row justify-content-center">
+                    <input name="width" id="width-inp" type="number" class="form-control" value="36" min="15" required oninput="validate(this)">
+                    <input name="height" id="height-inp" type="number" class="form-control mr-2" value="24" min="10" required oninput="validate(this)">
+                    <button class="btn btn-outline-success" onclick="makeMaze()">New</button>
+                </div>
             </div>
-            <div class="mb-2 d-flex flex-row justify-content-center">
-                <input name="width" id="width-inp" type="number" class="form-control" value="36" min="15" required oninput="validate(this)">
-                <input name="height" id="height-inp" type="number" class="form-control mr-2" value="24" min="10" required oninput="validate(this)">
-                <button class="btn btn-outline-success" onclick="makeMaze()">New</button>
-            </div>
-        </div>
+        </section>
     </body>
 </html>

@@ -1,16 +1,22 @@
-body{
+section{
+    padding-top: 4rem;
     display: flex;
     flex-direction: column;
     align-items: baseline;
-    background-color: rgb(247, 247, 249);
+}
+
+header{
+    z-index: 2 !important;
 }
 
 canvas {
     width: 75vw;
     aspect-ratio: 3 / 2;
-    border: 1px solid black ;
+    border-left: 1px solid black ;
+    border-bottom: 1px solid black ;
     margin-inline: auto;
     margin-bottom: 2.25rem;
+    filter: drop-shadow(0 0 5px rgba(0 0 0 / 15%))
 }
 
 .controls{
@@ -19,4 +25,8 @@ canvas {
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
+}
+
+#project{
+    background-color: #404040;
 }
